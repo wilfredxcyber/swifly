@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swifly Transfer</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface-color: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --radius: 12px;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--surface-color);
+            padding: 2rem;
+            border-radius: var(--radius);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .file-card {
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            margin-bottom: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .filename {
+            font-weight: 600;
+            font-size: 1.125rem;
+            margin-bottom: 0.5rem;
+            word-break: break-all;
+        }
+
+        .filesize {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            margin-top: 1.5rem;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: var(--primary);
+            width: 0%;
+            transition: width 0.1s ease-out;
+        }
+
+        .progress-text {
+            display: none;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            text-align: right;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.875rem 1.5rem;
+            border-radius: var(--radius);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .btn-cancel {
+            background-color: transparent;
+            color: var(--text-muted);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .btn-cancel:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .success-icon {
+            color: var(--success);
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .error-message {
+            color: var(--danger);
+            font-size: 0.875rem;
+            margin-top: 1rem;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="logo">Swifly</div>
+        <div class="status" id="status-text">Connection Secure</div>
+
+        <div class="success-icon" id="success-icon">✓</div>
+
+        <div class="file-card" id="file-card">
+            <div class="filename" id="filename">Loading...</div>
+            <div class="filesize" id="filesize">--</div>
+            
+            <div class="progress-container" id="progress-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="progress-text" id="progress-text">0%</div>
+        </div>
+
+        <button id="main-btn" disabled>Waiting...</button>
+        <button id="cancel-btn" class="btn-cancel">Cancel</button>
+        <div class="error-message" id="error-message"></div>
+    </div>
+
+    <script>
+        // Injected by the server
+        const SWIFLY_TOKEN = window.SWIFLY_TOKEN || new URLSearchParams(window.location.search).get('t');
+        
+        const ui = {
+            filename: document.getElementById('filename'),
+            filesize: document.getElementById('filesize'),
+            mainBtn: document.getElementById('main-btn'),
+            cancelBtn: document.getElementById('cancel-btn'),
+            progressContainer: document.getElementById('progress-container'),
+            progressBar: document.getElementById('progress-bar'),
+            progressText: document.getElementById('progress-text'),
+            statusText: document.getElementById('status-text'),
+            successIcon: document.getElementById('success-icon'),
+            fileCard: document.getElementById('file-card'),
+            errorMsg: document.getElementById('error-message')
+        };
+
+        let abortController = null;
+        let autoStartTimer = null;
+        let fileInfo = null;
+
+        function formatBytes(bytes, decimals = 2) {
+            if (!+bytes) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+        }
+
+        function showError(msg) {
+            ui.errorMsg.textContent = msg;
+            ui.errorMsg.style.display = 'block';
+            ui.statusText.textContent = 'Error';
+            ui.mainBtn.textContent = 'Retry';
+            ui.mainBtn.disabled = false;
+            ui.mainBtn.onclick = init;
+        }
+
+        async function init() {
+            ui.errorMsg.style.display = 'none';
+            ui.mainBtn.textContent = 'Connecting...';
+            ui.mainBtn.disabled = true;
+
+            try {
+                const res = await fetch('/ping');
+                if (!res.ok) throw new Error('Server returned ' + res.status);
+                fileInfo = await res.json();
+                
+                ui.filename.textContent = fileInfo.filename;
+                ui.filesize.textContent = formatBytes(fileInfo.size);
+                
+                ui.mainBtn.textContent = 'Download Now';
+                ui.mainBtn.disabled = false;
+                ui.mainBtn.onclick = startDownload;
+                
+                ui.statusText.textContent = 'Ready to transfer';
+
+                // Auto start after 1.5s
+                autoStartTimer = setTimeout(startDownload, 1500);
+
+            } catch (err) {
+                console.error(err);
+                showError('Could not connect to phone. Make sure it is still serving.');
+            }
+        }
+
+        async function startDownload() {
+            if (autoStartTimer) clearTimeout(autoStartTimer);
+            if (!SWIFLY_TOKEN) {
+                showError('No transfer token provided.');
+                return;
+            }
+
+            ui.mainBtn.style.display = 'none';
+            ui.cancelBtn.style.display = 'block';
+            ui.progressContainer.style.display = 'block';
+            ui.progressText.style.display = 'block';
+            ui.statusText.textContent = 'Transferring...';
+            ui.errorMsg.style.display = 'none';
+
+            abortController = new AbortController();
+
+            try {
+                const response = await fetch(`/file/${SWIFLY_TOKEN}`, {
+                    signal: abortController.signal
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) {
+                         throw new Error('Invalid or expired transfer token.');
+                    }
+                    throw new Error(`Server returned ${response.status}`);
+                }
+
+                const contentLength = response.headers.get('content-length');
+                const total = parseInt(contentLength, 10);
+                let loaded = 0;
+
+                // Handle streaming response to show progress
+                const reader = response.body.getReader();
+                const chunks = [];
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    chunks.push(value);
+                    loaded += value.length;
+                    
+                    if (total) {
+                        const percent = Math.round((loaded / total) * 100);
+                        ui.progressBar.style.width = `${percent}%`;
+                        ui.progressText.textContent = `${percent}% (${formatBytes(loaded)} / ${formatBytes(total)})`;
+                    } else {
+                        ui.progressText.textContent = `${formatBytes(loaded)} loaded`;
+                    }
+                }
+
+                // Download complete, create blob and trigger save
+                const blob = new Blob(chunks);
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                // Try to get filename from content-disposition, fallback to ping info
+                const disposition = response.headers.get('content-disposition');
+                let dlFilename = fileInfo ? fileInfo.filename : 'download';
+                if (disposition && disposition.indexOf('attachment') !== -1) {
+                    const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                    const matches = filenameRegex.exec(disposition);
+                    if (matches != null && matches[1]) { 
+                        dlFilename = matches[1].replace(/['"]/g, '');
+                    }
+                }
+                
+                a.download = dlFilename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                showSuccess();
+
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    resetUI();
+                    ui.statusText.textContent = 'Transfer cancelled';
+                } else {
+                    console.error('Download error:', err);
+                    resetUI();
+                    showError(err.message || 'Transfer failed. Connection lost.');
+                }
+            }
+        }
+
+        function showSuccess() {
+            ui.fileCard.style.display = 'none';
+            ui.cancelBtn.style.display = 'none';
+            ui.successIcon.style.display = 'block';
+            ui.statusText.textContent = 'Transfer Complete';
+            
+            ui.mainBtn.textContent = 'Download Again';
+            ui.mainBtn.style.display = 'block';
+            ui.mainBtn.disabled = false;
+            ui.mainBtn.onclick = () => {
+                ui.successIcon.style.display = 'none';
+                ui.fileCard.style.display = 'block';
+                ui.progressBar.style.width = '0%';
+                startDownload();
+            };
+        }
+
+        function resetUI() {
+            ui.progressContainer.style.display = 'none';
+            ui.progressText.style.display = 'none';
+            ui.progressBar.style.width = '0%';
+            ui.cancelBtn.style.display = 'none';
+            ui.mainBtn.style.display = 'block';
+            ui.mainBtn.textContent = 'Download Now';
+            ui.mainBtn.disabled = false;
+            ui.mainBtn.onclick = startDownload;
+        }
+
+        ui.cancelBtn.onclick = () => {
+            if (abortController) {
+                abortController.abort();
+            }
+        };
+
+        // Start
+        init();
+    </script>
+</body>
+</html>
