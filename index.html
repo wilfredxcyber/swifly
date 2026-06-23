@@ -70,7 +70,7 @@
             margin-bottom: 28px;
         }
 
-        /* ── Mode picker (shown when no ?id param & not yet chosen) ── */
+        /* ── Mode picker ── */
         #mode-picker { display: none; }
         #mode-picker.visible { display: block; }
 
@@ -427,19 +427,18 @@ function randomCode() {
 // ─── PeerJS shared config ─────────────────────────────────────────────────────
 
 const PEER_CONFIG = {
-    debug: 0,
+    debug: 1, // Basic logging
     config: {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' }
         ]
     }
 };
 
+// Removed 'reliable: true' as it is deprecated and causes connection hangs
 const CONN_CONFIG = {
-    reliable: true,
     serialization: 'none'   // ← raw ArrayBuffer; critical for iOS Safari + Android Chrome
 };
 
@@ -507,11 +506,28 @@ function runReceiver() {
     let peer;
 
     function tryConnect(code) {
-        statusText.textContent = 'Connecting to relay…';
+        statusText.textContent = 'Connecting to signaling server…';
+        
+        let openTimeout = setTimeout(() => {
+            statusEl.className = 'status error';
+            statusText.textContent = 'Server timeout';
+            errorEl.textContent = 'Could not connect to the WebRTC signaling server. It might be blocked by your network or temporarily down. Please reload the page.';
+            errorEl.classList.add('visible');
+        }, 15000);
 
-        peer = new Peer(code, PEER_CONFIG);
+        try {
+            peer = new Peer(code, PEER_CONFIG);
+        } catch (e) {
+            clearTimeout(openTimeout);
+            statusEl.className = 'status error';
+            statusText.textContent = 'Failed to initialize';
+            errorEl.textContent = e.message;
+            errorEl.classList.add('visible');
+            return;
+        }
 
         peer.on('open', (id) => {
+            clearTimeout(openTimeout);
             peerCode = id.toUpperCase();
             codeDisplay.textContent = peerCode;
 
@@ -544,6 +560,7 @@ function runReceiver() {
         });
 
         peer.on('error', (err) => {
+            clearTimeout(openTimeout);
             if (err.type === 'unavailable-id') {
                 // Code taken — retry with a new one
                 peer.destroy();
@@ -568,7 +585,6 @@ function runReceiver() {
         let meta = null;
         let chunks = [];
         let received = 0;
-        let isTextMeta = false;
 
         conn.on('open', () => {
             statusEl.className = 'status connected';
@@ -592,9 +608,11 @@ function runReceiver() {
             }
 
             // Binary chunks
-            if (data instanceof ArrayBuffer) {
+            if (data instanceof ArrayBuffer || data instanceof Blob) {
+                const byteLength = data.byteLength || data.size || 0;
                 chunks.push(data);
-                received += data.byteLength;
+                received += byteLength;
+                
                 const pct = meta ? Math.min(100, Math.round((received / meta.size) * 100)) : 0;
                 progressBar.style.width = pct + '%';
                 progressLabel.textContent = `${formatBytes(received)} / ${formatBytes(meta?.size || 0)} · ${pct}%`;
@@ -666,6 +684,7 @@ function initSenderUI(autoConnectId) {
     let conn = null;
     let selectedFile = null;
     let peer = null;
+    let connTimeout = null;
 
     if (autoConnectId) {
         // Pre-fill code from QR scan
@@ -679,8 +698,7 @@ function initSenderUI(autoConnectId) {
     connectBtn.addEventListener('click', () => {
         const code = codeInput.value.trim().toUpperCase();
         if (code.length < 3) {
-            errorEl.textContent = 'Please enter a valid code.';
-            errorEl.classList.add('visible');
+            showError('Please enter a valid code.');
             return;
         }
         connectToPeer(code);
@@ -697,14 +715,42 @@ function initSenderUI(autoConnectId) {
         codeInput.disabled = true;
 
         statusEl.className = 'status connecting';
-        statusText.textContent = 'Connecting to PC…';
+        statusText.textContent = 'Connecting to signaling server…';
 
-        peer = new Peer(PEER_CONFIG);
+        try {
+            peer = new Peer(PEER_CONFIG);
+        } catch (e) {
+            statusEl.className = 'status error';
+            statusText.textContent = 'Initialization failed';
+            showError(e.message);
+            resetInputs();
+            return;
+        }
+
+        // Failsafe timeout for signaling server connection
+        let serverTimeout = setTimeout(() => {
+            statusEl.className = 'status error';
+            statusText.textContent = 'Server timeout';
+            showError('Could not connect to the WebRTC signaling server. Try again.');
+            resetInputs();
+        }, 15000);
 
         peer.on('open', () => {
+            clearTimeout(serverTimeout);
+            statusText.textContent = 'Connecting to PC…';
+            
+            // Failsafe timeout for actual P2P WebRTC connection
+            connTimeout = setTimeout(() => {
+                statusEl.className = 'status error';
+                statusText.textContent = 'Connection timeout';
+                showError('P2P Connection timed out. Your WiFi network might be blocking direct WebRTC connections. Try restarting your browser or switching to mobile data.');
+                resetInputs();
+            }, 20000);
+
             conn = peer.connect(peerId, CONN_CONFIG);
 
             conn.on('open', () => {
+                clearTimeout(connTimeout);
                 statusEl.className = 'status connected';
                 statusText.textContent = 'PC connected — pick a file to send';
                 codeInputWrap.style.display = 'none';
@@ -715,6 +761,7 @@ function initSenderUI(autoConnectId) {
             });
 
             conn.on('error', (err) => {
+                clearTimeout(connTimeout);
                 statusEl.className = 'status error';
                 statusText.textContent = 'Connection error';
                 showError(`Connection error: ${err.message}`);
@@ -722,16 +769,21 @@ function initSenderUI(autoConnectId) {
             });
 
             conn.on('close', () => {
+                clearTimeout(connTimeout);
                 if (!successIcon.classList.contains('visible')) {
                     statusEl.className = 'status error';
                     statusText.textContent = 'Disconnected from PC';
                     showError('The PC disconnected. Reload and try again.');
+                    resetInputs();
                 }
             });
         });
 
         peer.on('error', (err) => {
+            clearTimeout(serverTimeout);
+            clearTimeout(connTimeout);
             statusEl.className = 'status error';
+            
             if (err.type === 'peer-unavailable') {
                 statusText.textContent = 'PC not found';
                 showError('No PC found with that code. Make sure Swifly is open on your PC and the code is correct.');
@@ -823,6 +875,9 @@ function initSenderUI(autoConnectId) {
         codeInputWrap.style.opacity = '1';
         connectBtn.disabled = false;
         codeInput.disabled = false;
+        if (peer) {
+            try { peer.destroy(); } catch(e) {}
+        }
     }
 }
 </script>
