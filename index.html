@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Swifly — Instant File Transfer</title>
     <meta name="description" content="Send files from your phone to your PC instantly over WiFi. No install, no cloud, no waiting.">
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -12,15 +12,20 @@
 
         :root {
             --bg: #0a0a0f;
-            --surface: #111118;
-            --border: rgba(255,255,255,0.07);
+            --surface: #13131a;
+            --surface2: #1a1a24;
+            --border: rgba(255,255,255,0.08);
             --primary: #6366f1;
-            --primary-dim: rgba(99,102,241,0.15);
+            --primary-glow: rgba(99,102,241,0.25);
+            --primary-dim: rgba(99,102,241,0.12);
             --success: #10b981;
             --danger: #ef4444;
+            --warning: #f59e0b;
             --text: #f1f5f9;
             --muted: #64748b;
-            --radius: 14px;
+            --muted2: #94a3b8;
+            --radius: 16px;
+            --radius-sm: 10px;
         }
 
         html, body {
@@ -31,88 +36,201 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 24px;
+            padding: 20px;
         }
 
+        /* ── Card ─────────────────────────────── */
         .card {
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 36px 32px;
+            padding: 32px 28px;
             width: 100%;
-            max-width: 400px;
+            max-width: 420px;
             text-align: center;
         }
 
+        /* ── Logo ─────────────────────────────── */
         .logo {
-            font-size: 1.75rem;
+            font-size: 1.8rem;
             font-weight: 800;
-            letter-spacing: -0.03em;
-            color: var(--primary);
+            letter-spacing: -0.04em;
+            background: linear-gradient(135deg, #818cf8, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             margin-bottom: 4px;
         }
 
         .tagline {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             color: var(--muted);
             text-transform: uppercase;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.1em;
             margin-bottom: 28px;
         }
 
-        /* ---- QR ---- */
+        /* ── Mode picker (shown when no ?id param & not yet chosen) ── */
+        #mode-picker { display: none; }
+        #mode-picker.visible { display: block; }
+
+        .mode-label {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 14px;
+        }
+
+        .mode-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 0;
+        }
+
+        .mode-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 20px 12px;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s, transform 0.1s;
+            text-align: center;
+        }
+
+        .mode-btn:hover { border-color: var(--primary); background: var(--primary-dim); }
+        .mode-btn:active { transform: scale(0.97); }
+
+        .mode-btn .icon { font-size: 2rem; margin-bottom: 8px; }
+        .mode-btn .mode-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; }
+        .mode-btn .mode-desc { font-size: 0.72rem; color: var(--muted); line-height: 1.4; }
+
+        /* ── Receiver ─────────────────────────── */
+        #receiver-panel { display: none; }
+        #receiver-panel.visible { display: block; }
+
         #qr-box {
             background: #fff;
-            border-radius: 10px;
+            border-radius: var(--radius-sm);
             padding: 14px;
             display: inline-block;
             margin-bottom: 16px;
         }
 
+        .code-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
         .code-text {
-            font-size: 1.6rem;
+            font-size: 1.8rem;
             font-weight: 700;
-            letter-spacing: 0.25em;
+            letter-spacing: 0.3em;
             color: var(--primary);
-            margin-bottom: 8px;
+            font-variant-numeric: tabular-nums;
         }
 
-        /* ---- Status label ---- */
-        .status {
-            font-size: 0.8rem;
+        .copy-btn {
+            background: var(--primary-dim);
+            border: 1px solid rgba(99,102,241,0.3);
+            border-radius: 6px;
+            color: var(--primary);
+            font-size: 0.7rem;
+            padding: 4px 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+            flex-shrink: 0;
+        }
+        .copy-btn:hover { background: rgba(99,102,241,0.22); }
+
+        .hint {
+            font-size: 0.75rem;
             color: var(--muted);
-            margin-bottom: 24px;
+            margin-bottom: 20px;
+            line-height: 1.5;
         }
 
-        .status .dot {
-            display: inline-block;
-            width: 7px; height: 7px;
+        /* ── Sender ───────────────────────────── */
+        #sender-panel { display: none; }
+        #sender-panel.visible { display: block; }
+
+        .code-input-wrap {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .code-input {
+            flex: 1;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            text-align: center;
+            padding: 14px 8px;
+            text-transform: uppercase;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .code-input::placeholder { color: var(--muted); font-size: 0.9rem; letter-spacing: 0.05em; font-weight: 400; }
+        .code-input:focus { border-color: var(--primary); }
+
+        /* ── Status pill ──────────────────────── */
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 0.8rem;
+            color: var(--muted2);
+            margin-bottom: 20px;
+        }
+
+        .dot {
+            width: 8px; height: 8px;
             border-radius: 50%;
             background: var(--muted);
-            margin-right: 6px;
-            vertical-align: middle;
+            flex-shrink: 0;
         }
 
-        .status.waiting .dot { background: var(--muted); animation: pulse 1.5s infinite; }
+        .status.waiting .dot { background: var(--muted); animation: pulse 1.6s infinite; }
+        .status.connecting .dot { background: var(--warning); animation: pulse 0.9s infinite; }
         .status.connected .dot { background: var(--success); }
-        .status.transferring .dot { background: var(--primary); animation: pulse 0.8s infinite; }
+        .status.transferring .dot { background: var(--primary); animation: pulse 0.7s infinite; }
         .status.done .dot { background: var(--success); }
         .status.error .dot { background: var(--danger); }
 
         @keyframes pulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+            50% { opacity: 0.25; }
         }
 
-        /* ---- Instruction ---- */
-        .instruction {
-            font-size: 0.875rem;
-            color: var(--muted);
-            line-height: 1.6;
-            margin-bottom: 20px;
+        /* ── File card ────────────────────────── */
+        .file-card {
+            background: var(--primary-dim);
+            border: 1px solid rgba(99,102,241,0.22);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            text-align: left;
+            margin-bottom: 18px;
+            display: none;
         }
+        .file-card.visible { display: block; }
+        .file-card .fname {
+            font-size: 0.9rem;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 3px;
+        }
+        .file-card .fsize { font-size: 0.75rem; color: var(--muted); }
 
-        /* ---- Progress ---- */
+        /* ── Progress ─────────────────────────── */
         .progress-wrap {
             background: rgba(255,255,255,0.06);
             border-radius: 99px;
@@ -121,101 +239,85 @@
             margin-bottom: 8px;
             display: none;
         }
+        .progress-wrap.visible { display: block; }
 
         .progress-bar {
             height: 100%;
-            background: var(--primary);
+            background: linear-gradient(90deg, #6366f1, #818cf8);
             width: 0%;
-            transition: width 0.1s linear;
+            transition: width 0.12s linear;
             border-radius: 99px;
         }
 
         .progress-label {
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             color: var(--muted);
             display: none;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
+            text-align: center;
         }
+        .progress-label.visible { display: block; }
 
-        /* ---- File preview (sender) ---- */
-        .file-card {
-            background: var(--primary-dim);
-            border: 1px solid rgba(99,102,241,0.25);
-            border-radius: 10px;
-            padding: 14px 16px;
-            text-align: left;
-            margin-bottom: 20px;
+        /* ── Success ──────────────────────────── */
+        .success-icon {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
             display: none;
         }
+        .success-icon.visible { display: block; }
 
-        .file-card .fname {
-            font-size: 0.9rem;
-            font-weight: 600;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-bottom: 2px;
-        }
-
-        .file-card .fsize {
-            font-size: 0.75rem;
-            color: var(--muted);
-        }
-
-        /* ---- Buttons ---- */
+        /* ── Buttons ──────────────────────────── */
         .btn {
             display: block;
             width: 100%;
             padding: 14px;
             border: none;
-            border-radius: 10px;
+            border-radius: var(--radius-sm);
             font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
             transition: opacity 0.15s, transform 0.1s;
+            margin-bottom: 10px;
         }
-
+        .btn:last-child { margin-bottom: 0; }
         .btn:active { transform: scale(0.98); }
-        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
         .btn-primary {
-            background: var(--primary);
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
             color: #fff;
+            box-shadow: 0 4px 16px var(--primary-glow);
         }
-
         .btn-primary:hover:not(:disabled) { opacity: 0.88; }
 
         .btn-ghost {
             background: transparent;
-            color: var(--muted);
+            color: var(--muted2);
             border: 1px solid var(--border);
-            margin-top: 10px;
         }
-
         .btn-ghost:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
 
-        /* ---- Success ---- */
-        .success-icon {
-            font-size: 3rem;
-            margin-bottom: 12px;
+        /* ── Error ────────────────────────────── */
+        .error-msg {
+            color: var(--danger);
+            font-size: 0.78rem;
+            margin-top: 10px;
             display: none;
+            background: rgba(239,68,68,0.08);
+            border: 1px solid rgba(239,68,68,0.2);
+            border-radius: 8px;
+            padding: 10px 12px;
+            text-align: left;
+            line-height: 1.5;
         }
+        .error-msg.visible { display: block; }
 
         .divider {
             border: none;
             border-top: 1px solid var(--border);
-            margin: 24px 0;
+            margin: 22px 0;
         }
 
-        /* ---- Error ---- */
-        .error-msg {
-            color: var(--danger);
-            font-size: 0.8rem;
-            margin-top: 12px;
-            display: none;
-        }
-
-        /* hidden file input */
         #file-input { display: none; }
     </style>
 </head>
@@ -225,16 +327,88 @@
     <div class="logo">Swifly</div>
     <div class="tagline">Instant WiFi File Transfer</div>
 
-    <!-- Content injected by JS -->
+    <!-- ─── Mode Picker ─────────────────────────── -->
+    <div id="mode-picker">
+        <div class="mode-label">What do you want to do?</div>
+        <div class="mode-grid">
+            <div class="mode-btn" id="btn-receive">
+                <div class="icon">💻</div>
+                <div class="mode-title">Receive</div>
+                <div class="mode-desc">Generate a code &amp; QR for your phone to scan</div>
+            </div>
+            <div class="mode-btn" id="btn-send">
+                <div class="icon">📱</div>
+                <div class="mode-title">Send</div>
+                <div class="mode-desc">Enter the code shown on your PC to connect</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── Receiver Panel ──────────────────────── -->
+    <div id="receiver-panel">
+        <div id="qr-box"></div>
+        <div class="code-row">
+            <div class="code-text" id="code-display">——————</div>
+            <button class="copy-btn" id="copy-btn">Copy</button>
+        </div>
+        <div class="hint" id="recv-hint">Scan QR on your phone, or go to swifly and enter the code above.</div>
+        <div class="status waiting" id="recv-status">
+            <span class="dot"></span>
+            <span id="recv-status-text">Generating code…</span>
+        </div>
+        <div class="progress-wrap" id="recv-progress-wrap"><div class="progress-bar" id="recv-progress-bar"></div></div>
+        <div class="progress-label" id="recv-progress-label"></div>
+        <div class="success-icon" id="recv-success">✅</div>
+        <div class="error-msg" id="recv-error"></div>
+        <hr class="divider">
+        <button class="btn btn-ghost" id="recv-back-btn">← Back</button>
+    </div>
+
+    <!-- ─── Sender Panel ────────────────────────── -->
+    <div id="sender-panel">
+        <div class="status connecting" id="send-status" style="margin-bottom:10px;">
+            <span class="dot"></span>
+            <span id="send-status-text">Enter the code from your PC</span>
+        </div>
+
+        <div class="code-input-wrap" id="code-input-wrap">
+            <input
+                class="code-input"
+                id="code-input"
+                type="text"
+                maxlength="6"
+                placeholder="Enter code"
+                autocomplete="off"
+                autocorrect="off"
+                spellcheck="false"
+            >
+            <button class="btn btn-primary" id="connect-btn" style="width:auto;padding:14px 18px;margin-bottom:0;">Connect</button>
+        </div>
+
+        <div class="file-card" id="file-card">
+            <div class="fname" id="fname"></div>
+            <div class="fsize" id="fsize"></div>
+        </div>
+        <div class="progress-wrap" id="send-progress-wrap"><div class="progress-bar" id="send-progress-bar"></div></div>
+        <div class="progress-label" id="send-progress-label"></div>
+        <div class="success-icon" id="send-success">✅</div>
+
+        <button class="btn btn-primary" id="main-btn" disabled style="display:none;">Waiting for connection…</button>
+        <button class="btn btn-ghost" id="change-btn" style="display:none;">Send another file</button>
+        <div class="error-msg" id="send-error"></div>
+        <hr class="divider">
+        <button class="btn btn-ghost" id="send-back-btn">← Back</button>
+    </div>
 </div>
 
 <input type="file" id="file-input">
 
 <script>
-// ─── Utilities ──────────────────────────────────────────────
+// ─── Utilities ───────────────────────────────────────────────────────────────
+
 function formatBytes(b) {
     if (!+b) return '0 B';
-    const k = 1024, sizes = ['B','KB','MB','GB'];
+    const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(b) / Math.log(k));
     return `${(b / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
 }
@@ -243,102 +417,189 @@ function getParam(key) {
     return new URLSearchParams(window.location.search).get(key);
 }
 
-const app = document.getElementById('app');
-const logo = app.querySelector('.logo');
-const tagline = app.querySelector('.tagline');
-const CHUNK = 64 * 1024; // 64 KB chunks
-
-// ─── Mode Detection ─────────────────────────────────────────
-const senderId = getParam('id');
-
-if (senderId) {
-    runSender(senderId);
-} else {
-    runReceiver();
+function randomCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0,O,1,I to avoid confusion
+    let code = '';
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
 }
 
-// ═══════════════════════════════════════════════════════════
-// RECEIVER MODE (PC — no ?id param)
-// ═══════════════════════════════════════════════════════════
+// ─── PeerJS shared config ─────────────────────────────────────────────────────
+
+const PEER_CONFIG = {
+    debug: 0,
+    config: {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+        ]
+    }
+};
+
+const CONN_CONFIG = {
+    reliable: true,
+    serialization: 'none'   // ← raw ArrayBuffer; critical for iOS Safari + Android Chrome
+};
+
+const CHUNK = 64 * 1024; // 64 KB
+
+// ─── Elements ────────────────────────────────────────────────────────────────
+
+const modePicker   = document.getElementById('mode-picker');
+const receiverPanel= document.getElementById('receiver-panel');
+const senderPanel  = document.getElementById('sender-panel');
+const btnReceive   = document.getElementById('btn-receive');
+const btnSend      = document.getElementById('btn-send');
+const recvBackBtn  = document.getElementById('recv-back-btn');
+const sendBackBtn  = document.getElementById('send-back-btn');
+
+// ─── Mode detection ───────────────────────────────────────────────────────────
+
+const urlPeerId = getParam('id');
+
+if (urlPeerId) {
+    // Phone scanned QR code — go straight to sender
+    showSender(urlPeerId.toUpperCase());
+} else {
+    // No ID param — show mode picker
+    modePicker.classList.add('visible');
+}
+
+btnReceive.addEventListener('click', () => {
+    modePicker.classList.remove('visible');
+    receiverPanel.classList.add('visible');
+    runReceiver();
+});
+
+btnSend.addEventListener('click', () => {
+    modePicker.classList.remove('visible');
+    senderPanel.classList.add('visible');
+    initSenderUI(null); // no auto-connect, wait for code entry
+});
+
+recvBackBtn.addEventListener('click', resetToHome);
+sendBackBtn.addEventListener('click', resetToHome);
+
+function resetToHome() {
+    location.href = location.pathname; // clear any ?id param
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RECEIVER (PC)
+// ═══════════════════════════════════════════════════════════════════════════════
+
 function runReceiver() {
-    // Build UI
-    app.innerHTML += `
-        <div id="qr-box"></div>
-        <div class="code-text" id="code-text">——————</div>
-        <div class="status waiting" id="status"><span class="dot"></span><span id="status-text">Generating pairing code…</span></div>
-        <div class="instruction" id="instruction">Open Swifly on your phone and scan the QR code, or type the code above into your phone's browser.</div>
-        <div class="progress-wrap" id="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
-        <div class="progress-label" id="progress-label"></div>
-        <div class="success-icon" id="success-icon">✅</div>
-        <div class="error-msg" id="error-msg"></div>
-    `;
+    const qrBox       = document.getElementById('qr-box');
+    const codeDisplay = document.getElementById('code-display');
+    const copyBtn     = document.getElementById('copy-btn');
+    const recvHint    = document.getElementById('recv-hint');
+    const statusEl    = document.getElementById('recv-status');
+    const statusText  = document.getElementById('recv-status-text');
+    const progressWrap= document.getElementById('recv-progress-wrap');
+    const progressBar = document.getElementById('recv-progress-bar');
+    const progressLabel=document.getElementById('recv-progress-label');
+    const successIcon = document.getElementById('recv-success');
+    const errorEl     = document.getElementById('recv-error');
 
-    const statusEl = document.getElementById('status');
-    const statusText = document.getElementById('status-text');
-    const codeText = document.getElementById('code-text');
-    const qrBox = document.getElementById('qr-box');
-    const instruction = document.getElementById('instruction');
-    const progressWrap = document.getElementById('progress-wrap');
-    const progressBar = document.getElementById('progress-bar');
-    const progressLabel = document.getElementById('progress-label');
-    const successIcon = document.getElementById('success-icon');
-    const errorMsg = document.getElementById('error-msg');
+    let peerCode = randomCode();
+    let peer;
 
-    const peer = new Peer({ debug: 0 });
+    function tryConnect(code) {
+        statusText.textContent = 'Connecting to relay…';
 
-    peer.on('open', (id) => {
-        const url = `${location.origin}${location.pathname}?id=${id}`;
-        codeText.textContent = id.toUpperCase().slice(0, 6);
+        peer = new Peer(code, PEER_CONFIG);
 
-        try {
-            new QRCode(qrBox, {
-                text: url,
-                width: 180, height: 180,
-                colorDark: '#111118', colorLight: '#ffffff',
-                correctLevel: QRCode.CorrectLevel.M
+        peer.on('open', (id) => {
+            peerCode = id.toUpperCase();
+            codeDisplay.textContent = peerCode;
+
+            const shareUrl = `${location.origin}${location.pathname}?id=${peerCode}`;
+
+            // QR Code
+            qrBox.innerHTML = '';
+            try {
+                new QRCode(qrBox, {
+                    text: shareUrl,
+                    width: 180, height: 180,
+                    colorDark: '#111118', colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            } catch(e) {
+                qrBox.innerHTML = `<p style="color:#111;padding:16px;font-size:0.7rem;">QR unavailable<br>Use the code</p>`;
+            }
+
+            statusEl.className = 'status waiting';
+            statusText.textContent = 'Waiting for phone…';
+            recvHint.textContent = 'Scan the QR on your phone, or open Swifly and enter the code above.';
+
+            // Copy button
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard?.writeText(peerCode).then(() => {
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => copyBtn.textContent = 'Copy', 2000);
+                }).catch(() => {});
             });
-        } catch(e) {
-            qrBox.innerHTML = '<p style="color:#111;padding:20px;font-size:0.75rem">QR unavailable<br>Use the code above</p>';
-        }
+        });
 
-        statusEl.className = 'status waiting';
-        statusText.textContent = 'Waiting for phone…';
-    });
+        peer.on('error', (err) => {
+            if (err.type === 'unavailable-id') {
+                // Code taken — retry with a new one
+                peer.destroy();
+                tryConnect(randomCode());
+            } else {
+                statusEl.className = 'status error';
+                statusText.textContent = 'Connection error';
+                errorEl.textContent = `Error: ${err.message}`;
+                errorEl.classList.add('visible');
+            }
+        });
 
-    peer.on('connection', (conn) => {
-        statusEl.className = 'status connected';
-        statusText.textContent = 'Phone connected';
+        peer.on('connection', handleIncomingConnection);
+    }
+
+    function handleIncomingConnection(conn) {
+        statusEl.className = 'status connecting';
+        statusText.textContent = 'Phone connecting…';
         qrBox.style.opacity = '0.3';
-        instruction.textContent = 'Connected! Select a file on your phone to start the transfer.';
+        recvHint.textContent = 'Phone connected — waiting for file…';
 
         let meta = null;
         let chunks = [];
         let received = 0;
+        let isTextMeta = false;
+
+        conn.on('open', () => {
+            statusEl.className = 'status connected';
+            statusText.textContent = 'Phone connected — pick a file on your phone';
+        });
 
         conn.on('data', (data) => {
-            // First message is metadata
-            if (typeof data === 'object' && data.type === 'meta') {
-                meta = data;
-                chunks = [];
-                received = 0;
-                statusEl.className = 'status transferring';
-                statusText.textContent = `Receiving ${meta.name}`;
-                instruction.textContent = `${meta.name} · ${formatBytes(meta.size)}`;
-                progressWrap.style.display = 'block';
-                progressLabel.style.display = 'block';
+            // Metadata arrives as a JSON string (because serialization:'none' = raw)
+            if (typeof data === 'string') {
+                try {
+                    meta = JSON.parse(data);
+                    chunks = [];
+                    received = 0;
+                    statusEl.className = 'status transferring';
+                    statusText.textContent = `Receiving ${meta.name}…`;
+                    recvHint.textContent = `${meta.name} · ${formatBytes(meta.size)}`;
+                    progressWrap.classList.add('visible');
+                    progressLabel.classList.add('visible');
+                } catch(e) {}
                 return;
             }
 
-            // Subsequent messages are ArrayBuffer chunks
+            // Binary chunks
             if (data instanceof ArrayBuffer) {
                 chunks.push(data);
                 received += data.byteLength;
-                const pct = meta ? Math.round((received / meta.size) * 100) : 0;
+                const pct = meta ? Math.min(100, Math.round((received / meta.size) * 100)) : 0;
                 progressBar.style.width = pct + '%';
-                progressLabel.textContent = `${formatBytes(received)} / ${formatBytes(meta ? meta.size : 0)} · ${pct}%`;
+                progressLabel.textContent = `${formatBytes(received)} / ${formatBytes(meta?.size || 0)} · ${pct}%`;
 
                 if (meta && received >= meta.size) {
-                    // Assemble and download
                     const blob = new Blob(chunks);
                     const a = document.createElement('a');
                     a.href = URL.createObjectURL(blob);
@@ -347,100 +608,140 @@ function runReceiver() {
                     URL.revokeObjectURL(a.href);
 
                     statusEl.className = 'status done';
-                    statusText.textContent = 'Transfer complete';
-                    instruction.textContent = `${meta.name} saved to your Downloads folder.`;
-                    successIcon.style.display = 'block';
-                    progressWrap.style.display = 'none';
-                    progressLabel.style.display = 'none';
+                    statusText.textContent = 'Transfer complete ✓';
+                    recvHint.textContent = `${meta.name} saved to your Downloads folder.`;
+                    successIcon.classList.add('visible');
+                    progressWrap.classList.remove('visible');
+                    progressLabel.classList.remove('visible');
                 }
             }
         });
 
         conn.on('close', () => {
-            if (received < (meta?.size || 1)) {
+            if (!meta || received < meta.size) {
                 statusEl.className = 'status error';
-                statusText.textContent = 'Connection lost';
+                statusText.textContent = 'Connection lost — phone disconnected';
             }
-        });
-    });
-
-    peer.on('error', (err) => {
-        statusEl.className = 'status error';
-        statusText.textContent = 'Connection error';
-        errorMsg.textContent = err.message;
-        errorMsg.style.display = 'block';
-    });
-}
-
-// ═══════════════════════════════════════════════════════════
-// SENDER MODE (Phone — has ?id= param)
-// ═══════════════════════════════════════════════════════════
-function runSender(receiverId) {
-    app.innerHTML += `
-        <div class="status waiting" id="status"><span class="dot"></span><span id="status-text">Connecting to PC…</span></div>
-        <div class="file-card" id="file-card">
-            <div class="fname" id="fname"></div>
-            <div class="fsize" id="fsize"></div>
-        </div>
-        <div class="progress-wrap" id="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
-        <div class="progress-label" id="progress-label"></div>
-        <div class="success-icon" id="success-icon">✅</div>
-        <button class="btn btn-primary" id="main-btn" disabled>Waiting for PC…</button>
-        <button class="btn btn-ghost" id="change-btn" style="display:none">Send another file</button>
-        <div class="error-msg" id="error-msg"></div>
-    `;
-
-    const statusEl = document.getElementById('status');
-    const statusText = document.getElementById('status-text');
-    const fileCard = document.getElementById('file-card');
-    const fnameEl = document.getElementById('fname');
-    const fsizeEl = document.getElementById('fsize');
-    const progressWrap = document.getElementById('progress-wrap');
-    const progressBar = document.getElementById('progress-bar');
-    const progressLabel = document.getElementById('progress-label');
-    const successIcon = document.getElementById('success-icon');
-    const mainBtn = document.getElementById('main-btn');
-    const changeBtn = document.getElementById('change-btn');
-    const fileInput = document.getElementById('file-input');
-    const errorMsg = document.getElementById('error-msg');
-
-    let conn = null;
-    let selectedFile = null;
-
-    const peer = new Peer({ debug: 0 });
-
-    peer.on('open', () => {
-        conn = peer.connect(receiverId, { reliable: true });
-
-        conn.on('open', () => {
-            statusEl.className = 'status connected';
-            statusText.textContent = 'PC connected — pick a file';
-            mainBtn.textContent = 'Choose File';
-            mainBtn.disabled = false;
-            mainBtn.onclick = () => fileInput.click();
         });
 
         conn.on('error', (err) => {
             statusEl.className = 'status error';
             statusText.textContent = 'Transfer error';
-            errorMsg.textContent = err.message;
-            errorMsg.style.display = 'block';
+            errorEl.textContent = err.message;
+            errorEl.classList.add('visible');
+        });
+    }
+
+    tryConnect(peerCode);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SENDER (Phone)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function showSender(autoId) {
+    modePicker.classList.remove('visible');
+    senderPanel.classList.add('visible');
+    initSenderUI(autoId);
+}
+
+function initSenderUI(autoConnectId) {
+    const statusEl      = document.getElementById('send-status');
+    const statusText    = document.getElementById('send-status-text');
+    const codeInputWrap = document.getElementById('code-input-wrap');
+    const codeInput     = document.getElementById('code-input');
+    const connectBtn    = document.getElementById('connect-btn');
+    const fileCard      = document.getElementById('file-card');
+    const fnameEl       = document.getElementById('fname');
+    const fsizeEl       = document.getElementById('fsize');
+    const progressWrap  = document.getElementById('send-progress-wrap');
+    const progressBar   = document.getElementById('send-progress-bar');
+    const progressLabel = document.getElementById('send-progress-label');
+    const successIcon   = document.getElementById('send-success');
+    const mainBtn       = document.getElementById('main-btn');
+    const changeBtn     = document.getElementById('change-btn');
+    const fileInput     = document.getElementById('file-input');
+    const errorEl       = document.getElementById('send-error');
+
+    let conn = null;
+    let selectedFile = null;
+    let peer = null;
+
+    if (autoConnectId) {
+        // Pre-fill code from QR scan
+        codeInput.value = autoConnectId;
+        connectToPeer(autoConnectId);
+    } else {
+        statusText.textContent = 'Enter the code shown on the PC';
+        statusEl.className = 'status waiting';
+    }
+
+    connectBtn.addEventListener('click', () => {
+        const code = codeInput.value.trim().toUpperCase();
+        if (code.length < 3) {
+            errorEl.textContent = 'Please enter a valid code.';
+            errorEl.classList.add('visible');
+            return;
+        }
+        connectToPeer(code);
+    });
+
+    codeInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') connectBtn.click();
+    });
+
+    function connectToPeer(peerId) {
+        errorEl.classList.remove('visible');
+        codeInputWrap.style.opacity = '0.5';
+        connectBtn.disabled = true;
+        codeInput.disabled = true;
+
+        statusEl.className = 'status connecting';
+        statusText.textContent = 'Connecting to PC…';
+
+        peer = new Peer(PEER_CONFIG);
+
+        peer.on('open', () => {
+            conn = peer.connect(peerId, CONN_CONFIG);
+
+            conn.on('open', () => {
+                statusEl.className = 'status connected';
+                statusText.textContent = 'PC connected — pick a file to send';
+                codeInputWrap.style.display = 'none';
+                mainBtn.style.display = 'block';
+                mainBtn.textContent = 'Choose File';
+                mainBtn.disabled = false;
+                mainBtn.onclick = () => fileInput.click();
+            });
+
+            conn.on('error', (err) => {
+                statusEl.className = 'status error';
+                statusText.textContent = 'Connection error';
+                showError(`Connection error: ${err.message}`);
+                resetInputs();
+            });
+
+            conn.on('close', () => {
+                if (!successIcon.classList.contains('visible')) {
+                    statusEl.className = 'status error';
+                    statusText.textContent = 'Disconnected from PC';
+                    showError('The PC disconnected. Reload and try again.');
+                }
+            });
         });
 
-        conn.on('close', () => {
+        peer.on('error', (err) => {
             statusEl.className = 'status error';
-            statusText.textContent = 'Disconnected from PC';
+            if (err.type === 'peer-unavailable') {
+                statusText.textContent = 'PC not found';
+                showError('No PC found with that code. Make sure Swifly is open on your PC and the code is correct.');
+            } else {
+                statusText.textContent = 'Connection failed';
+                showError(`Error: ${err.message}`);
+            }
+            resetInputs();
         });
-    });
-
-    peer.on('error', (err) => {
-        statusEl.className = 'status error';
-        statusText.textContent = err.type === 'peer-unavailable'
-            ? 'PC not found — make sure swifly is open on the PC'
-            : 'Connection error';
-        errorMsg.textContent = err.message;
-        errorMsg.style.display = 'block';
-    });
+    }
 
     fileInput.addEventListener('change', (e) => {
         selectedFile = e.target.files[0];
@@ -448,16 +749,16 @@ function runSender(receiverId) {
 
         fnameEl.textContent = selectedFile.name;
         fsizeEl.textContent = formatBytes(selectedFile.size);
-        fileCard.style.display = 'block';
-
+        fileCard.classList.add('visible');
         mainBtn.textContent = 'Send File';
         mainBtn.onclick = sendFile;
-        successIcon.style.display = 'none';
+        mainBtn.disabled = false;
+        successIcon.classList.remove('visible');
         changeBtn.style.display = 'none';
+        progressWrap.classList.remove('visible');
+        progressLabel.classList.remove('visible');
         progressBar.style.width = '0%';
-        progressWrap.style.display = 'none';
-        progressLabel.style.display = 'none';
-        errorMsg.style.display = 'none';
+        errorEl.classList.remove('visible');
     });
 
     function sendFile() {
@@ -467,16 +768,13 @@ function runSender(receiverId) {
         mainBtn.textContent = 'Sending…';
         statusEl.className = 'status transferring';
         statusText.textContent = 'Sending…';
-        progressWrap.style.display = 'block';
-        progressLabel.style.display = 'block';
-        errorMsg.style.display = 'none';
+        progressWrap.classList.add('visible');
+        progressLabel.classList.add('visible');
+        errorEl.classList.remove('visible');
 
-        // Send metadata first
-        conn.send({
-            type: 'meta',
-            name: selectedFile.name,
-            size: selectedFile.size
-        });
+        // Send metadata as JSON string (required with serialization:'none')
+        const meta = JSON.stringify({ name: selectedFile.name, size: selectedFile.size });
+        conn.send(meta);
 
         // Send file in chunks
         const reader = new FileReader();
@@ -491,20 +789,18 @@ function runSender(receiverId) {
             conn.send(e.target.result);
             offset += e.target.result.byteLength;
 
-            const pct = Math.round((offset / selectedFile.size) * 100);
+            const pct = Math.min(100, Math.round((offset / selectedFile.size) * 100));
             progressBar.style.width = pct + '%';
             progressLabel.textContent = `${formatBytes(offset)} / ${formatBytes(selectedFile.size)} · ${pct}%`;
 
             if (offset < selectedFile.size) {
-                // Small delay to avoid flooding the DataChannel buffer
                 setTimeout(readChunk, 0);
             } else {
-                // Done
                 statusEl.className = 'status done';
-                statusText.textContent = 'Transfer complete';
-                successIcon.style.display = 'block';
-                progressWrap.style.display = 'none';
-                progressLabel.style.display = 'none';
+                statusText.textContent = 'Transfer complete ✓';
+                successIcon.classList.add('visible');
+                progressWrap.classList.remove('visible');
+                progressLabel.classList.remove('visible');
                 mainBtn.style.display = 'none';
                 changeBtn.style.display = 'block';
             }
@@ -516,6 +812,17 @@ function runSender(receiverId) {
         };
 
         readChunk();
+    }
+
+    function showError(msg) {
+        errorEl.textContent = msg;
+        errorEl.classList.add('visible');
+    }
+
+    function resetInputs() {
+        codeInputWrap.style.opacity = '1';
+        connectBtn.disabled = false;
+        codeInput.disabled = false;
     }
 }
 </script>
